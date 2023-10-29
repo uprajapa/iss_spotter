@@ -4,6 +4,7 @@ const URL = 'https://api.ipify.org';
 let ip = "";
 let urlForIp = 'http://ipwho.is/';
 const geoLocation = {};
+let flyOverTimes = [];
 
 const fetchMyIP = function() {
   return new Promise((resolve, reject) => {
@@ -71,10 +72,31 @@ const fetchISSFlyOverTimes = function() {
       }
       
       let data = JSON.parse(body);
-      console.log(`Data.response: ${data['response']}`);
-      return resolve(`Response fetched with ${response.statusCode} code: ${data.response}`);
+      flyOverTimes = data.response;
+      // console.log(`Data.response: ${data['response']}`);
+      return resolve(`Response fetched with ${response.statusCode} code: ${flyOverTimes}`);
     });
   });
 };
 
-module.exports = { fetchMyIP, fetchCoordsByIP, fetchISSFlyOverTimes };
+const nextISSTimesForMyLocation = function() {
+  let msg = "";
+
+  let convertTimeZone = function(time) {
+    let date = new Date(time * 1000);
+    return date;
+  };
+
+  return new Promise((resolve, reject) => {
+    if (flyOverTimes.length === 0) {
+      return reject(`No data found!`);
+    }
+    for (let times of flyOverTimes) {
+      let time = convertTimeZone(times.risetime);
+      msg += `\nNext pass at: ${time} for ${times.duration} seconds!`;
+    }
+    return resolve(msg);
+  });
+};
+
+module.exports = { fetchMyIP, fetchCoordsByIP, fetchISSFlyOverTimes, nextISSTimesForMyLocation };
