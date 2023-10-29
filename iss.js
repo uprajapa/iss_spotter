@@ -3,57 +3,78 @@ const URL = 'https://api.ipify.org';
 
 let ip = "";
 let urlForIp = 'http://ipwho.is/';
+const geoLocation = {};
 
-const fetchMyIP = function(callback) {
+const fetchMyIP = function() {
   return new Promise((resolve, reject) => {
     request(URL, (error, response, body) => {
       if (error) {
-        callback(error, null);
-        return reject();
+        // callback(error, null);
+        return reject(`Error fetching Ip addess: ${error}`);
       }
       if (response.statusCode !== 200) {
         const msg = `Status Code ${response.statusCode} when fetching IP. Response: ${body}`;
-        callback(Error(msg), null);
-        return reject();
+        // callback(Error(msg), null);
+        return reject(msg);
       }
       ip = body; // Got our IP!
-      callback(null, ip);
-      return resolve();
+      // callback(null, ip);
+      return resolve(`IP fetched: ${ip}`);
     });
   });
 };
 
-const fetchCoordsByIP = function(callback) {
+const fetchCoordsByIP = function() {
   return new Promise((resolve, reject) => {
-    request(`${urlForIp}42`, (error, response, body) => {
-      // console.log(`ip: ${body}`);
+    const URLFORIP = urlForIp + ip;
+    request(URLFORIP, (error, response, body) => {
       let data = JSON.parse(body);
-      let geoLocation = {};
 
       if (!data.success) {
-        return reject(`It didn't work! Error: Success status was false. Server message says: Invalid IP address when fetching for IP ${ip}`);
+        return reject(`Error: Success status was false. Server message says: Invalid IP address when fetching for IP ${ip}`);
       }
       if (error) {
-        console.log(`Error: ${error}`);
-        callback(error, null);
-        return reject();
+        return reject(error);
       }
       if (response.statusCode !== 200) {
         const msg = `Status Code ${response.statusCode} when fetching IP. Response: ${body}`;
-        callback(Error(msg), null);
-        return reject();
+        return reject(msg);
       }
       
       geoLocation['latitude'] = data.latitude;
       geoLocation['longitude'] = data.longitude;
-      callback(null, geoLocation);
-      return resolve();
+      return resolve(`Geolocation fetched: ${geoLocation}`);
     });
   });
 };
 
-/* fetchMyIP()
-  .then(fetchCoordsByIP)
-  .catch((err) => console.log(`Something wrong: ${err}`)); */
+/**
+ * Makes a single API request to retrieve upcoming ISS fly over times the for the given lat/lng coordinates.
+ * Input:
+ *   - An object with keys `latitude` and `longitude`
+ *   - A callback (to pass back an error or the array of resulting data)
+ * Returns (via Callback):
+ *   - An error, if any (nullable)
+ *   - The fly over times as an array of objects (null if error). Example:
+ *     [ { risetime: 134564234, duration: 600 }, ... ]
+ */
+const fetchISSFlyOverTimes = function() {
+  return new Promise((resolve, reject) => {
+    const URL = `https://iss-flyover.herokuapp.com/json/?lat=${geoLocation.latitude}&lon=${geoLocation.longitude}`;
+    request(URL, (error, response, body) => {
+      console.log(`Response: ${response.statusCode}: ${response}`);
+      if (response.statusCode === 400) {
+        return reject(`Invalid url for fetchISSFlyOverTimes`);
+      }
+      if (error || response.statusCode !== 200) {
+        return reject(`Error: ${error}`);
+      }
+      
+      let data = JSON.parse(body);
+      console.log(`Data.response: ${data['response']}`);
+      return resolve(`Response fetched with ${response.statusCode} code: ${data.response}`);
+    });
+  });
+};
 
-module.exports = { fetchMyIP, fetchCoordsByIP };
+module.exports = { fetchMyIP, fetchCoordsByIP, fetchISSFlyOverTimes };
